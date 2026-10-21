@@ -1,2 +1,5 @@
 .remember 
 folderstructure.txt
+__pycache__/
+*.pyc
+Project_Defense_Bank_Transaction_Monitoring.pdf

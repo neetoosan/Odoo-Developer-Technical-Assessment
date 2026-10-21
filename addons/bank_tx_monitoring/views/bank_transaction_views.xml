@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="bank_transaction_view_tree" model="ir.ui.view">
+        <field name="name">bank.transaction.tree</field>
+        <field name="model">bank.transaction</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="state == 'flagged'"
+                  decoration-warning="state == 'failed'"
+                  decoration-muted="state == 'pending'"
+                  decoration-success="state == 'approved'">
+                <header>
+                    <button name="action_run_monitoring_now" type="object"
+                            string="Run Monitoring Now" display="always"/>
+                </header>
+                <field name="transaction_date"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="amount" sum="Total"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="is_high_value" optional="show"/>
+                <field name="is_high_frequency" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-danger="state == 'flagged'"
+                       decoration-warning="state == 'failed'"
+                       decoration-success="state in ('processed', 'approved')"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="bank_transaction_view_form" model="ir.ui.view">
+        <field name="name">bank.transaction.form</field>
+        <field name="model">bank.transaction</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_approve" type="object" string="Approve"
+                            class="btn-primary" invisible="state != 'flagged'"/>
+                    <button name="action_reject" type="object" string="Reject"
+                            invisible="state != 'flagged'"/>
+                    <button name="action_retry" type="object" string="Retry"
+                            class="btn-primary" invisible="state != 'failed'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="pending,processed,flagged"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Bank reference" readonly="state != 'pending'"/></h1>
+                    </div>
+                    <group>
+                        <group string="Transaction">
+                            <field name="partner_id" readonly="state != 'pending'"/>
+                            <field name="amount" readonly="state != 'pending'"/>
+                            <field name="currency_id" readonly="state != 'pending'"/>
+                            <field name="transaction_date" readonly="state != 'pending'"/>
+                            <field name="description"/>
+                        </group>
+                        <group string="Monitoring">
+                            <field name="is_high_value"/>
+                            <field name="is_high_frequency"/>
+                            <field name="processed_on"/>
+                        </group>
+                    </group>
+                    <group string="Why was this flagged?" invisible="not flag_reason">
+                        <field name="flag_reason" nolabel="1" colspan="2"/>
+                    </group>
+                    <group string="Error" invisible="not error_message">
+                        <field name="error_message" nolabel="1" colspan="2"/>
+                    </group>
+                    <group string="Review" invisible="state not in ('flagged', 'approved', 'rejected')">
+                        <field name="review_note" readonly="state != 'flagged'"/>
+                        <field name="reviewed_by_id" invisible="not reviewed_by_id"/>
+                        <field name="reviewed_on" invisible="not reviewed_on"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="bank_transaction_view_search" model="ir.ui.view">
+        <field name="name">bank.transaction.search</field>
+        <field name="model">bank.transaction</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <filter name="pending" string="Pending" domain="[('state', '=', 'pending')]"/>
+                <filter name="flagged" string="Flagged for Review" domain="[('state', '=', 'flagged')]"/>
+                <filter name="failed" string="Failed" domain="[('state', '=', 'failed')]"/>
+                <separator/>
+                <filter name="high_value" string="High Value" domain="[('is_high_value', '=', True)]"/>
+                <filter name="high_frequency" string="High Frequency" domain="[('is_high_frequency', '=', True)]"/>
+                <separator/>
+                <filter name="transaction_date" string="Date" date="transaction_date"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_customer" string="Customer" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_day" string="Day" context="{'group_by': 'transaction_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="bank_transaction_action_review" model="ir.actions.act_window">
+        <field name="name">Review Queue</field>
+        <field name="res_model">bank.transaction</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_flagged': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing to review</p>
+            <p>Transactions flagged by the monitoring job appear here.</p>
+        </field>
+    </record>
+
+    <record id="bank_transaction_action_all" model="ir.actions.act_window">
+        <field name="name">All Transactions</field>
+        <field name="res_model">bank.transaction</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No transactions yet</p>
+            <p>Create or import transactions. The monitoring job checks them in the background.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_bank_tx_root" name="Transaction Monitoring" sequence="40"/>
+    <menuitem id="menu_bank_tx_review" name="Review Queue" parent="menu_bank_tx_root"
+              action="bank_transaction_action_review" sequence="10"/>
+    <menuitem id="menu_bank_tx_all" name="All Transactions" parent="menu_bank_tx_root"
+              action="bank_transaction_action_all" sequence="20"/>
+</odoo>
